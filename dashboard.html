@@ -1805,13 +1805,8 @@ body.dark-mode .profile-select-btn {
             </div>
             <div class="stat-card">
                 <div class="stat-icon">✅</div>
-                <div class="stat-label">Sold</div>
+                <div class="stat-label">Items Sold</div>
                 <div class="stat-value" id="soldCount">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📥</div>
-                <div class="stat-label">In Stock</div>
-                <div class="stat-value" id="stockCount">0</div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">📈</div>
@@ -1842,13 +1837,12 @@ body.dark-mode .profile-select-btn {
             <h2 class="section-title">➕ Add New Sale</h2>
             <form id="addSaleForm" class="form-single-column">
                 <!-- Product Selection -->
-<div class="form-group">
-    <label>📦 Status</label>
-    <select id="productSoldStatus" required>
-        <option value="yes" selected>Sold</option> <!-- Default to "Sold" only -->
-    </select>
-</div>
-
+                <div class="form-group">
+                    <label>📦 Select Product</label>
+                    <select id="productSelect" required>
+                        <option value="">-- Select Product --</option>
+                    </select>
+                </div>
 
                 <!-- Product Details Card (Hidden until product selected) -->
                 <div id="productDetailsCard" class="price-info-card" style="display: none;">
@@ -2032,10 +2026,11 @@ body.dark-mode .profile-select-btn {
         <div id="profileSelectGrid" class="profile-select-grid"></div>
     </div>
 </div>
-<!-- Status (Always Sold - Hidden) -->
-<div class="form-group" style="display: none;">
-    <input type="hidden" id="productSoldStatus" value="yes">
-</div>
+                    <div class="form-group" style="display: none;">
+
+                    <label>📦 Status</label>
+                    <input type="hidden" id="productSoldStatus" value="yes">
+                </div>
 
                 <button type="submit" class="btn btn-primary">➕ ADD SALE</button>
             </form>
@@ -2775,11 +2770,6 @@ body.dark-mode .profile-select-btn {
                     <button class="btn btn-secondary" id="toggleDarkMode" style="margin-top: 10px;">Toggle Dark Mode</button>
                 </div>
                 
-                <div class="setting-card">
-                    <div class="setting-title">📊 Low Stock Alert</div>
-                    <input type="number" id="lowStockThreshold" placeholder="Quantity threshold" value="5" min="1" style="width: 100%; margin-top: 10px;">
-                </div>
-            </div>
             
             <!-- Advanced Theme Builder -->
             <div style="margin-top: 30px; padding: 20px; background: var(--light); border-radius: 20px; border: 3px dashed var(--border-color);">
@@ -3106,7 +3096,6 @@ let commissionBrackets = []; // Store commission bracket configuration
     let settings = {
             theme: 'theme-purple',
             darkMode: false,
-            lowStockThreshold: 5
         };
 
         let calcValue = '0';
@@ -3619,7 +3608,6 @@ function populateSoldByDropdown() {
 
         function saveSettings() {
             settings.theme = document.getElementById('themeSelect').value;
-            settings.lowStockThreshold = parseInt(document.getElementById('lowStockThreshold').value);
             
             showSyncingIndicator();
             getRef('settings/' + currentUsername).set(settings)
@@ -3639,7 +3627,6 @@ function populateSoldByDropdown() {
             }
             
             document.getElementById('themeSelect').value = settings.theme;
-            document.getElementById('lowStockThreshold').value = settings.lowStockThreshold;
         }
 
         // =================== PRODUCT MANAGEMENT ===================
@@ -4693,7 +4680,6 @@ function deleteSale(id) {
         });
 }
 
-        // =================== EDIT SALE ===================
         function editSale(id) {
             const sale = sales.find(s => s.id === id);
             if (!sale) return;
@@ -4859,25 +4845,36 @@ function deleteSale(id) {
             
             return filtered;
         }
-function calculateStats() {
-    const filtered = getFilteredSales();
-    
-    const stats = filtered.reduce((acc, s) => {
-        acc.totalSales += (s.totalPrice || 0);
-        acc.totalProducts += s.quantity;
-        acc.soldCount += s.quantity; // All items are sold
-        acc.totalCapital += ((s.buyPrice || 0) * s.quantity);
-        acc.totalProfit += ((s.price || 0) - (s.buyPrice || 0)) * s.quantity;
-        
-        return acc;
-    }, {
-        totalSales: 0,
-        totalCapital: 0,
-        totalProducts: 0,
-        soldCount: 0,
-        totalProfit: 0
-    });
 
+        function calculateStats() {
+            const filtered = getFilteredSales();
+            
+            // Calculate all metrics in a single pass for better performance
+            const stats = filtered.reduce((acc, s) => {
+                acc.totalSales += (s.totalPrice || 0);
+                acc.totalProducts += s.quantity;
+                
+                if (s.sold) {
+                    acc.soldCount += s.quantity;
+                    // Calculate total capital (buy prices) for sold items
+                    acc.totalCapital += ((s.buyPrice || 0) * s.quantity);
+                    // Calculate business profit (Sell Price - Buy Price) for sold items
+                    acc.totalProfit += ((s.price || 0) - (s.buyPrice || 0)) * s.quantity;
+                }
+                
+                return acc;
+            }, {
+                totalSales: 0,
+                totalCapital: 0,
+                totalProducts: 0,
+                soldCount: 0,
+                totalProfit: 0
+            });
+            
+            // Calculate Total Salary using total profit bracket method
+            // IMPORTANT: This applies ONE bracket rate to the total profit (not per-item calculation)
+            // Formula: Total Salary = Total Profit × Bracket Rate (%)
+            // Example: If Total Profit = ₱4,000 and bracket rate is 20%, then Total Salary = ₱800
             const bracketRate = getCommissionRateForProfit(stats.totalProfit, currentSession.id);
             const totalSalary = (stats.totalProfit * bracketRate) / 100;
             
@@ -4920,10 +4917,10 @@ function calculateStats() {
                 );
             }
             
-// Apply status filter
-if (activeFilter === 'filterSold') {
-    filtered = filtered.filter(s => s.sold);
-}
+            // Apply status filter
+            if (activeFilter === 'filterSold') {
+                filtered = filtered.filter(s => s.sold);
+            }
             
             if (filtered.length === 0) {
                 tbody.innerHTML = `
@@ -4943,7 +4940,7 @@ if (activeFilter === 'filterSold') {
             tbody.innerHTML = filtered.map(sale => {
                 const warrantyClass = sale.warranty === 'FW' ? 'fw' : 'nw';
                 const accountClass = sale.accountType === 'Solo' ? 'solo' : 'shared';
-                const soldIcon = '✅';
+                const soldIcon = sale.sold ? '✅' : '📦';
                 
                 // Format profile tracking columns
                 const accountId = sale.accountId || '-';
@@ -4969,7 +4966,8 @@ if (activeFilter === 'filterSold') {
                         <td>${sale.quantity}</td>
                         <td class="amount-cell">₱${sale.price.toFixed(2)}</td>
                         <td class="amount-cell">₱${sale.totalPrice.toFixed(2)}</td>
-                        <td><span class="sold-check">✅</span></td>                        <td>
+                        <td><span class="sold-check">✅</span></td>
+                        <td>
                             <button class="action-btn edit-btn" onclick="editSale(${sale.id})">✏️</button>
                             <button class="action-btn delete-btn" onclick="deleteSale(${sale.id})">🗑️</button>
                         </td>
@@ -5016,13 +5014,12 @@ if (activeFilter === 'filterSold') {
             revenueChart = new Chart(revenueCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Sold', 'In Stock'],
+                    labels: ['Sold'],
                     datasets: [{
                         data: [
                             filtered.filter(s => s.sold).length,
-                            filtered.filter(s => !s.sold).length
                         ],
-                        backgroundColor: ['#10B981', '#F59E0B']
+                        backgroundColor: ['#10B981']
                     }]
                 },
                 options: {
@@ -6217,7 +6214,6 @@ document.addEventListener('keydown', function(e) {
                 </td>
                 <td>
                     <select class="bulk-status">
-                        <option value="no">In Stock</option>
                         <option value="yes">Sold</option>
                     </select>
                 </td>
@@ -6344,7 +6340,7 @@ document.addEventListener('keydown', function(e) {
                     totalPrice: sellPrice * qty,
                     commission: commission,
                     totalCommission: totalCommission,
-                    sold: status === 'yes',
+                    sold: true,
                     date: new Date().toISOString().split('T')[0],
                     timestamp: Date.now()
                 });
