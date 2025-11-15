@@ -2054,37 +2054,37 @@ body.dark-mode .profile-select-btn {
                 </button>
             </div>
 
-            <div id="bulkSalesForm" style="display: none;">
-                <div class="bulk-sales-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="min-width: 180px;">📦 Product</th>
-                                <th style="min-width: 120px;">👤 Account Type</th>
-                                <th style="min-width: 100px;">🛡️ Warranty</th>
-                                <th style="min-width: 100px;">💵 Buy (₱)</th>
-                                <th style="min-width: 100px;">💰 Sell (₱)</th>
-                                <th style="min-width: 80px;">🔢 Qty</th>
-                                <th style="min-width: 100px;">📦 Status</th>
-                                <th style="min-width: 80px;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bulkSalesTableBody">
-                            <!-- Bulk rows will be added here -->
-                        </tbody>
-                    </table>
-                </div>
+<div class="bulk-sales-table">
+    <table>
+        <thead>
+            <tr>
+                <th style="min-width: 180px;">📦 Product</th>
+                <th style="min-width: 120px;">👤 Account Type</th>
+                <th style="min-width: 100px;">🛡️ Warranty</th>
+                <th style="min-width: 120px;">👤 User ID</th> <!-- Added User ID -->
+                <th style="min-width: 150px;">📧 Email</th> <!-- Added Email -->
+                <th style="min-width: 100px;">💵 Buy (₱)</th>
+                <th style="min-width: 100px;">💰 Sell (₱)</th>
+                <th style="min-width: 80px;">🔢 Qty</th>
+                <th style="min-width: 80px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="bulkSalesTableBody">
+            <tr>
+                <td><input type="text" placeholder="Enter Product Name"></td>
+                <td><input type="text" placeholder="Solo/Shared"></td>
+                <td><input type="text" placeholder="Warranty Type"></td>
+                <td><input type="text" placeholder="Enter User ID"></td> <!-- New User ID input -->
+                <td><input type="email" placeholder="Enter Email"></td> <!-- New Email input -->
+                <td><input type="number" placeholder="Enter Buy Price"></td>
+                <td><input type="number" placeholder="Enter Sell Price"></td>
+                <td><input type="number" placeholder="Enter Quantity"></td>
+                <td><button type="button" class="delete-btn" onclick="deleteSaleRow(this)">❌ Delete</button></td> <!-- Delete Button -->
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-                <div class="bulk-actions">
-                    <button class="btn btn-secondary" onclick="addBulkRow()">➕ Add Row</button>
-                    <button class="btn btn-success" onclick="saveBulkSales()">💾 Save All Sales</button>
-                    <button class="btn btn-info" onclick="applyToAllWarranty()">🛡️ Apply Warranty to All</button>
-                    <button class="btn btn-info" onclick="applyToAllAccountType()">👤 Apply Account Type to All</button>
-                    <button class="btn btn-info" onclick="applyToAllStatus()">📦 Apply Status to All</button>
-                    <span id="bulkRowCount" style="font-weight: 700; color: var(--primary);">0 rows</span>
-                </div>
-            </div>
-        </div>
 
         <!-- Sales Table -->
         <div class="table-section">
@@ -2165,12 +2165,13 @@ body.dark-mode .profile-select-btn {
                 <button class="close-btn" onclick="closeAccountManagementModal()">✕</button>
             </div>
             
-            <form id="createAccountForm" onsubmit="saveAccount(event)">
-                <div class="form-group">
-                    <label>🆔 Account ID</label>
-                    <input type="text" id="accountIdInput" placeholder="e.g., NF001, DIS002" required>
-                    <small style="color: var(--text-color); opacity: 0.7; margin-top: 5px; display: block;">Unique identifier for this account</small>
-                </div>
+<div class="form-group">
+    <label>📦 Status</label>
+    <select id="productSoldStatus" required>
+        <option value="yes" selected>Sold</option> <!-- Default to "Sold" -->
+    </select>
+</div>
+
                 
                 <div class="form-group">
                     <label>📦 Product</label>
@@ -4164,24 +4165,30 @@ document.querySelectorAll('input[name="saleType"]').forEach(radio => {
             document.getElementById('totalEarningsCard').style.display = 'block';
         }
 
-        // Delete Product
-        function deleteProduct(productId) {
-            // Prevent admins from deleting products
-            if (currentSession.role !== 'owner') {
-                showToast('❌ Only owner can delete products', 'error');
-                return;
-            }
+// Delete Product
+function deleteProduct(productId) {
+    // Allow both owner and admin to delete products
+    if (currentSession.role !== 'owner' && currentSession.role !== 'admin') {
+        showToast('❌ Only owner or admin can delete products', 'error');
+        return;
+    }
+    
+    // Ask for confirmation before deletion
+    if (!confirm('Delete this product?')) return;
+    
+    // Delete the product from Firebase
+    getRef('products/' + productId).remove()
+        .then(() => {
+            showToast('🗑️ Product deleted', 'info');
             
-            if (!confirm('Delete this product?')) return;
-            
-            getRef('products/' + productId).remove()
-                .then(() => {
-                    showToast('🗑️ Product deleted', 'info');
-                })
-                .catch((error) => {
-                    showToast('❌ Error: ' + error.message, 'error');
-                });
-        }
+            // Remove the product row from the UI
+            document.getElementById('productRow-' + productId).remove();
+        })
+        .catch((error) => {
+            console.error('Error deleting product:', error);
+            showToast('❌ Error: ' + error.message, 'error');
+        });
+}
 
         // Edit Product
         function editProduct(productId) {
