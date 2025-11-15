@@ -1842,12 +1842,13 @@ body.dark-mode .profile-select-btn {
             <h2 class="section-title">➕ Add New Sale</h2>
             <form id="addSaleForm" class="form-single-column">
                 <!-- Product Selection -->
-                <div class="form-group">
-                    <label>📦 Select Product</label>
-                    <select id="productSelect" required>
-                        <option value="">-- Select Product --</option>
-                    </select>
-                </div>
+<div class="form-group">
+    <label>📦 Status</label>
+    <select id="productSoldStatus" required>
+        <option value="yes" selected>Sold</option> <!-- Default to "Sold" only -->
+    </select>
+</div>
+
 
                 <!-- Product Details Card (Hidden until product selected) -->
                 <div id="productDetailsCard" class="price-info-card" style="display: none;">
